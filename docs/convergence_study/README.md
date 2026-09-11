@@ -97,6 +97,41 @@ Not yet comparable to an exact value: the demo world and beta_r differ from the
 exact run above. The two variants disagree with each other by a factor of two on
 V_r(s0), which by itself says at least one has not converged in 1,000 steps.
 
+## Why the multigrid demo cannot converge to backward induction as configured
+
+Reading the code (`examples/phase2/phase2_robot_policy_demo.py`,
+`src/empo/learning_based/phase2/config.py`, `src/empo/backward_induction/phase2.py`)
+shows three settings under which the learner is solving a *different* problem from
+the exact solver, independent of training budget:
+
+1. **`include_step_count=False`** (demo line ~1341). Backward-induction states are
+   time-indexed (`state[0]`), and the finite-horizon V_r and V_h^e depend on the
+   remaining time. With the flag off, the neural encoder drops the step count and
+   the lookup tables strip `state[0]` from their keys, so the learner cannot even
+   represent the exact solution. Must be `True` for any exact comparison.
+2. **Different human policy.** The exact solver uses the Phase 1
+   `TabularHumanPolicyPrior` (Boltzmann in beta_h, computed by backward induction);
+   the demo trains against `HeuristicPotentialPolicy(beta=1000)`, a shortest-path
+   heuristic. Different pi_h means different eqs. (4) to (9). Pass the Phase 1
+   prior as `human_policy_prior=` to the trainer.
+3. **X_h clamping asymmetry.** Backward induction feeds unclamped X_h into eq. (8);
+   the learner clamps X_h to [1e-3, 1] (and floors it by the goal sampler's
+   smallest weight). Either compare against a clamped target (there is a helper,
+   `compute_clamped_target_vr` in `examples/phase2/phase2_ppo_tabular_reward.py`) or
+   derive the exact U_r with the same clamp.
+
+Smaller traps: beta_r is 0 (uniform robot) throughout warm-up and ramps with a
+sigmoid afterwards, so learned pi_r must be evaluated with the exact solver's
+beta_r after the ramp saturates; the exact V_h^e is stored as float16 with zero
+entries omitted (error floor about 1e-3); goal sets differ between the demo's
+`DEFINED_GOALS` (5 goals), the `TrivialGoalGenerator` (4) and `trivial.yaml` (6),
+and the three code paths aggregate X_h with different goal weights.
+
+`examples/bushworld/bushworld_compare.py` is the one harness in the repo that
+already trains a `Phase2Config` learner and scores it against backward induction
+(`compare_policies` -> argmax agreement and RMSE of action probabilities over all
+states), so it is the starting point for the sweep rather than a new script.
+
 ## Next
 
 1. `docs/convergence_study/compare_to_exact.py`: load saved Phase 2 networks (or tabular tables), run the

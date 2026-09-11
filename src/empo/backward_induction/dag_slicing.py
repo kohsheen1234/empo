@@ -238,7 +238,8 @@ class DiskBasedDAG:
             is_tmpfs = "/dev/shm" in disk_dag.cache_dir or (
                 hasattr(os, 'statvfs') and 
                 os.path.exists(disk_dag.cache_dir) and
-                os.statvfs(disk_dag.cache_dir).f_type == 0x01021994  # TMPFS_MAGIC on Linux
+                # f_type only exists on Linux; macOS/BSD statvfs results lack it.
+                getattr(os.statvfs(disk_dag.cache_dir), "f_type", None) == 0x01021994  # TMPFS_MAGIC on Linux
             )
             storage_type = "tmpfs (RAM)" if is_tmpfs else "disk"
             

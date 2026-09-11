@@ -97,6 +97,27 @@ Not yet comparable to an exact value: the demo world and beta_r differ from the
 exact run above. The two variants disagree with each other by a factor of two on
 V_r(s0), which by itself says at least one has not converged in 1,000 steps.
 
+### Bushworld, exact vs learned lookup tables (`examples/bushworld/bushworld_compare.py`)
+
+    .venv/bin/python examples/bushworld/bushworld_compare.py --method lookup --seed 0 --no-movie
+
+Default 7x3 world, 2 humans + 1 robot, 132 states; beta_r = 5, gamma = 0.95,
+zeta = xi = eta = 1 (harness defaults); 600 lookup-table training steps (10 s).
+
+| metric | value |
+|---|---|
+| states compared | 132 |
+| argmax agreement, learned vs exact pi_r | 24.2% |
+| RMSE of action probabilities | 0.072 |
+| final V_r(s0), learned | -14.76 |
+| rollouts, exact policy | bushes cleared 1.67, human travel 4.00 |
+| rollouts, learned policy | bushes cleared 2.67, human travel 3.67 |
+
+Reading: this harness *is* set up correctly (same world, same human prior, same
+parameters), so the gap here is genuine non-convergence at 600 steps rather than a
+specification mismatch. RMSE 0.07 on a soft policy is moderate, but argmax agreement
+of 24% is close to chance. A 6,000-step run is in progress; neural results follow.
+
 ## Why the multigrid demo cannot converge to backward induction as configured
 
 Reading the code (`examples/phase2/phase2_robot_policy_demo.py`,

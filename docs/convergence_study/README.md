@@ -55,7 +55,33 @@ exact U_r(s) from backward induction.
 Reading: after 100 iterations the PPO critic has collapsed to a near-constant value
 and the policy is close to uniform (root pi_r = 0.22 / 0.27 / 0.35 / 0.16 vs exact
 0.24 / 0.12 / 0.12 / 0.52). Even with exact rewards the PPO path has not reached the
-fixed point at this budget. A 500-iteration run is in progress.
+fixed point at this budget.
+
+### Same, 500 iterations
+
+    .venv/bin/python examples/phase2/phase2_ppo_tabular_reward.py --world trivial.yaml --iters 500
+
+| metric | 100 iters | 500 iters |
+|---|---|---|
+| action agreement with exact pi_r | 10.9% | 11.4% |
+| KL(exact ‖ PPO) mean / median / max | 0.438 / 0.115 / 1.776 | 0.461 / 0.139 / 2.445 |
+| root pi_r (still / left / right / forward) | 0.22 / 0.27 / 0.35 / 0.16 | 0.07 / 0.06 / 0.12 / 0.75 |
+| PPO V_r range over all states | [-52.8, -50.1] | [-48.2, -45.4] |
+
+Reading: five times more iterations moves the **root** policy onto the exact argmax
+(forward), but agreement across all states does not improve and KL gets slightly
+worse, so the policy is not converging to the exact fixed point state by state.
+Two caveats for interpreting this diagnostic:
+
+- Agreement of 11% is below the 25% a uniform policy would score over 4 actions,
+  which suggests a systematic disagreement (for instance the exact policy preferring
+  `still` in many states where PPO prefers movement) rather than noise. Worth
+  breaking down by exact argmax action.
+- The critic's near-constant value about -47 is roughly U_r / (1 - gamma_r) for
+  U_r ~ -0.5 and gamma_r = 0.99, i.e. an infinite-horizon value, while the script's
+  "clamped target" is the finite-horizon backward-DP value on a 10-step episode
+  (range [-4.3, 0]). The V_r comparison therefore mixes two definitions; the policy
+  metrics are the ones to trust here.
 
 ### DQN-style trainer, demo "trivial" world, quick mode (1,000 training steps), seed 42
 

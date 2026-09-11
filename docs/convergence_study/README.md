@@ -142,8 +142,31 @@ mismatches. Three observations:
 - RMSE on probabilities is small partly because beta_r = 5 keeps pi_r soft; argmax
   agreement is the stricter metric and should be the primary one.
 
-A 6,000-step lookup run is in progress to separate "needs more steps" from "does
-not converge".
+### Bushworld, lookup tables with 10x the budget
+
+    .venv/bin/python examples/bushworld/bushworld_compare.py --method lookup --seed 0 --lookup-iterations 6000 --no-movie --no-resume
+
+| metric | lookup, 600 steps | lookup, 6,000 steps |
+|---|---|---|
+| argmax agreement with exact pi_r | 24.2% | 24.2% |
+| RMSE of action probabilities | 0.072 | 0.090 |
+| final V_r(s0), learned | -14.76 | -9.56 |
+
+Reading: ten times more training does not move argmax agreement at all and makes
+the probability error worse, while V_r(s0) keeps drifting (-14.8 -> -9.6). Under the
+harness's default settings the lookup-table learner is **not converging** to the
+exact fixed point; it is wandering. Since lookup tables have no approximation error,
+the cause must be in the update rule or its schedule: candidates are the constant
+learning rate before the 1/t phase, the target-network lag on the coupled V^e / Q_r
+updates, the beta_r ramp interacting with the moving V^e, and the X_h clamp. These
+are the first things to sweep (`lookup_use_adaptive_lr=True` for per-entry 1/n
+averaging is the theoretically clean setting and is off by default).
+
+Provisional conclusion after day one: on the two smallest worlds, none of the three
+learning paths (PPO with exact rewards, lookup-table DQN, neural DQN) reaches the
+exact backward-induction solution at default settings, and doubling or decupling
+the budget does not change that. The convergence study is therefore about the
+update rules and schedules, not about compute.
 
 ## Why the multigrid demo cannot converge to backward induction as configured
 

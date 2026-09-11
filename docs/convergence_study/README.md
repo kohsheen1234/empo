@@ -113,10 +113,37 @@ zeta = xi = eta = 1 (harness defaults); 600 lookup-table training steps (10 s).
 | rollouts, exact policy | bushes cleared 1.67, human travel 4.00 |
 | rollouts, learned policy | bushes cleared 2.67, human travel 3.67 |
 
+### Bushworld, exact vs learned neural networks
+
+    .venv/bin/python examples/bushworld/bushworld_compare.py --method neural --seed 0 --no-movie
+
+Same world and parameters; 3,000 neural training steps (63 s learner time).
+
+| metric | lookup, 600 steps | neural, 3,000 steps |
+|---|---|---|
+| argmax agreement with exact pi_r | 24.2% | 31.1% |
+| RMSE of action probabilities | 0.072 | 0.056 |
+| final V_r(s0), learned | -14.76 | -125.43 |
+| rollouts (exact: 1.67 bushes, 4.00 travel) | 2.67 bushes, 3.67 travel | 1.67 bushes, 4.00 travel |
+
 Reading: this harness *is* set up correctly (same world, same human prior, same
-parameters), so the gap here is genuine non-convergence at 600 steps rather than a
-specification mismatch. RMSE 0.07 on a soft policy is moderate, but argmax agreement
-of 24% is close to chance. A 6,000-step run is in progress; neural results follow.
+parameters), so the gaps here are genuine non-convergence rather than specification
+mismatches. Three observations:
+
+- Both learners are far from the exact policy state by state (agreement 24 to 31%,
+  near chance for 4 to 5 actions), even though the neural policy's rollouts already
+  match the exact policy's behaviour on the 3 evaluation rollouts. Behavioural
+  agreement at the start state is a much weaker test than all-states agreement.
+- The two learners disagree with each other on V_r(s0) by a factor of about 8
+  (-14.8 vs -125.4) with identical theory parameters. At least one value scale is
+  wrong; this is the same value-scale instability the repo's open evaluation flags.
+  With gamma_r = 0.95 the infinite-horizon value of a constant U_r = -1 is -20, so
+  -125 is not a plausible fixed-point value for this world.
+- RMSE on probabilities is small partly because beta_r = 5 keeps pi_r soft; argmax
+  agreement is the stricter metric and should be the primary one.
+
+A 6,000-step lookup run is in progress to separate "needs more steps" from "does
+not converge".
 
 ## Why the multigrid demo cannot converge to backward induction as configured
 
